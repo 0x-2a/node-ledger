@@ -1,0 +1,32 @@
+server:
+  # Use "http" or "https"
+  protocol: http
+  host: "0.0.0.0"
+  port: 3000
+  # TLS cert paths (only used when protocol = "https")
+  tls:
+    key: "./certs/server.key"
+    cert: "./certs/server.crt"
+  http:
+    # Maximum request body size
+    bodyLimit: 1048576        # 1 MB in bytes
+    # Milliseconds to wait for a connection to be established
+    connectionTimeout: 10000  # 10 s
+    # Milliseconds of inactivity before the server times out a connection
+    keepAliveTimeout: 72000   # 72 s
+    # Milliseconds to wait for request headers to be received
+    requestTimeout: 30000     # 30 s
+
+logging:
+  # "json" for structured production logs, "console" for human-readable dev logs
+  format: console
+  level: info
+
+cors:
+  origin: "*"
+  methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
