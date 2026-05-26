@@ -50,7 +50,7 @@ export function loadConfig(configPath?: string): Config {
 
   let filePath = '';
   if (configPath) {
-    filePath = path.resolve(process.cwd(), 'config.yaml');
+    filePath = path.resolve(process.cwd(), configPath);
   }
 
   let raw: unknown = {};

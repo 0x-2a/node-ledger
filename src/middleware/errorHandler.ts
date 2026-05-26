@@ -1,11 +1,14 @@
 import type {FastifyError, FastifyInstance, FastifyReply, FastifyRequest} from 'fastify';
 import {ZodError} from 'zod';
-import {TypedErr, ErrorNameKey, ErrorNameStatusCodeMap, ErrorTypeMap} from '../errors/errors';
+import {ErrorNameKey, ErrorNameStatusCodeMap, ErrorTypeMap, TypedErr} from '../errors/errors';
+import {getLogger} from '../config/logger';
 
 export function registerErrorHandler(app: FastifyInstance): void {
+  const logger = getLogger();
+
   app.setErrorHandler((
           error: FastifyError | TypedErr | ZodError,
-          req: FastifyRequest,
+          _: FastifyRequest,
           reply: FastifyReply
       ) => {
         // Handle Zod validation errors → 400.
@@ -26,7 +29,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
           const errStatus = ErrorNameStatusCodeMap[errTypeKey as ErrorNameKey];
 
           if (errTypeKey === ErrorTypeMap.Unknown) {
-            req.log.error({err: error}, 'Unhandled error');
+            logger.error({err: error}, 'Unhandled error');
           }
 
           return reply.status(errStatus).send({
@@ -39,7 +42,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
         const fastifyError = error as FastifyError;
         const statusCode = fastifyError.statusCode || 500;
 
-        req.log.error({err: error}, error.message || 'Unhandled error');
+        logger.error({err: error}, error.message || 'Unhandled error');
 
         return reply.status(statusCode).send({
           error: error.message ?? 'Internal Server Error',

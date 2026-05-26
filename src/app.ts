@@ -1,7 +1,6 @@
 import Fastify, {FastifyInstance, FastifyServerFactory} from 'fastify';
 import cors from '@fastify/cors';
 import type {Config} from './config';
-import {createLogger} from './config/logger';
 import type {AccountsDB, LedgerDB} from './db/interface';
 import {registerErrorHandler} from './middleware/errorHandler';
 import {AccountService} from './services/account.service';
@@ -14,6 +13,7 @@ import {registerAccountRoutes} from './routes/accountRoutes';
 import {registerTransactionRoutes} from './routes/txRoutes';
 import {InMemLedgerDB} from './db/memLedgerDB';
 import {InMemAccountsDB} from './db/memAccountsDB';
+import {registerRootRoutes} from './routes/rootRoutes';
 
 export interface AppOptions {
   config: Config;
@@ -23,13 +23,6 @@ export interface AppOptions {
 
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const {config} = options;
-
-  let level = config.logging.level;
-  if (!level) {
-    config.logging.level = 'info';
-  }
-
-  const logger = createLogger(config.logging);
 
   const accountsDB = options.accountsDB || new InMemAccountsDB();
   const ledgerDB = options.ledgerDB || new InMemLedgerDB();
@@ -58,7 +51,6 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   }
 
   const app: FastifyInstance = Fastify({
-    logger: false,
     bodyLimit: config.server.http.bodyLimit,
     connectionTimeout: config.server.http.connectionTimeout,
     keepAliveTimeout: config.server.http.keepAliveTimeout,
@@ -88,13 +80,12 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     });
   });
 
-  logger.info(`Server listening on ${config.server.host}:${config.server.port} . . .`);
-
   // ── Services ──────────────────────────────────────────────────────────────
   const accountService = new AccountService(accountsDB);
   const transactionService = new TransactionService(accountsDB, ledgerDB);
 
   // ── Routes ────────────────────────────────────────────────────────────────
+  registerRootRoutes(app);
   registerAccountRoutes(app, accountService);
   registerTransactionRoutes(app, transactionService);
 

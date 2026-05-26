@@ -3,6 +3,7 @@ import type {FastifyInstance} from 'fastify';
 import {buildApp} from '../../src/app.js';
 import type {Config} from '../../src/config';
 import {InMemLedgerDB} from '../../src/db/memLedgerDB';
+import {initLogger} from '../../src/config/logger';
 
 const testConfig: Config = {
   server: {
@@ -16,9 +17,11 @@ const testConfig: Config = {
       requestTimeout: 30_000,
     },
   },
-  logging: {format: 'json', level: 'info'},
+  logging: {format: 'json', level: 'debug'},
   cors: {origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']},
 };
+
+initLogger(testConfig.logging)
 
 let app: FastifyInstance;
 let store: InMemLedgerDB;

@@ -3,14 +3,22 @@ import type {Config} from './index';
 import {FastifyBaseLogger} from 'fastify';
 import moment from 'moment-timezone';
 
-export function createLogger(cfg: Config['logging']): FastifyBaseLogger {
-  if (cfg.format === 'json') {
-    return pino({
-      level: cfg.level,
-    });
+let logger: FastifyBaseLogger | undefined;
+
+export function initLogger(cfg: Config['logging']) {
+  if (logger) {
+    return;
   }
 
-  return withLocation(pino({
+  if (cfg.format === 'json') {
+    logger = pino({
+      level: cfg.level,
+    });
+
+    return
+  }
+
+  logger = withLocation(pino({
     level: cfg.level,
     timestamp: () => `,"time":"${formatTimestamp()}"`,
     base: undefined,
@@ -24,6 +32,14 @@ export function createLogger(cfg: Config['logging']): FastifyBaseLogger {
       },
     },
   }));
+}
+
+export function getLogger(): FastifyBaseLogger {
+  if (!logger) {
+    throw new Error('Logger not initialized. Call initLogger() first.');
+  }
+
+  return logger;
 }
 
 function formatTimestamp(): string {
