@@ -9,7 +9,7 @@ export function registerRootRoutes(
           reply: FastifyReply,
       ) => {
         return reply.send({
-          status: "healthy",
+          status: 'healthy',
           timestamp: moment().valueOf(),
         });
       },

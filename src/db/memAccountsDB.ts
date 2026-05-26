@@ -3,7 +3,6 @@ import {CreateAccountSchema} from '../models/schemas';
 import {InvalidInputError} from '../errors/errors';
 import {AccountsDB} from './interface';
 
-
 /**
  * Promise-chaining mutex for per-account serialisation.
  * Each acquire() queues behind the previous one using a promise chain.
@@ -41,7 +40,7 @@ export class InMemAccountsDB implements AccountsDB {
     }
 
     const acct = this.accounts.get(id);
-    return acct ? { ...acct } : null;
+    return acct ? {...acct} : null;
   }
 
   async saveAccount(account: Account): Promise<void> {
@@ -51,7 +50,7 @@ export class InMemAccountsDB implements AccountsDB {
       throw new InvalidInputError('account.id');
     }
 
-    this.accounts.set(account.id, { ...account });
+    this.accounts.set(account.id, {...account});
   }
 
   async updateAccountBalance(
@@ -73,7 +72,7 @@ export class InMemAccountsDB implements AccountsDB {
       };
 
       this.accounts.set(id, updated);
-      return { ...updated };
+      return {...updated};
     } finally {
       release();
     }

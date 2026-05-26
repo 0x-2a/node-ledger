@@ -15,7 +15,7 @@ export function initLogger(cfg: Config['logging']) {
       level: cfg.level,
     });
 
-    return
+    return;
   }
 
   logger = withLocation(pino({

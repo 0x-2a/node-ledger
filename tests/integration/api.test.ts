@@ -21,7 +21,7 @@ const testConfig: Config = {
   cors: {origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']},
 };
 
-initLogger(testConfig.logging)
+initLogger(testConfig.logging);
 
 let app: FastifyInstance;
 let store: InMemLedgerDB;

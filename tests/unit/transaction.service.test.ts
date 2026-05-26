@@ -4,11 +4,7 @@ import {AccountService} from '../../src/services/account.service.js';
 import {Account} from '../../src/models';
 import {InMemAccountsDB} from '../../src/db/memAccountsDB';
 import {InMemLedgerDB} from '../../src/db/memLedgerDB';
-import {
-  AccountNotFoundError,
-  ReqCancelledError,
-  TxAlreadyExistsError
-} from '../../src/errors/errors';
+import {AccountNotFoundError, ReqCancelledError, TxAlreadyExistsError} from '../../src/errors/errors';
 import {v4} from 'uuid';
 
 let accountsDB: InMemAccountsDB;

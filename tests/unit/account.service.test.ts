@@ -34,7 +34,8 @@ describe('AccountService.create', () => {
   it('throws 409 on duplicate id', async () => {
     const id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
     await accountService.create({id, direction: 'debit'} as Account);
-    await expect(accountService.create({id, direction: 'credit'} as Account)).rejects.toBeInstanceOf(AccountAlreadyExistsError);
+    await expect(accountService.create({id, direction: 'credit'} as Account)).rejects.toBeInstanceOf(
+        AccountAlreadyExistsError);
   });
 });
 
