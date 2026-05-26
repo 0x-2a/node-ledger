@@ -1,10 +1,10 @@
 import pino from 'pino';
-import type {Config} from './index.js';
+import type {Config} from './index';
 import {FastifyBaseLogger} from 'fastify';
 import moment from 'moment-timezone';
 
 export function createLogger(cfg: Config['logging']): FastifyBaseLogger {
-  if (cfg.format === 'json'){
+  if (cfg.format === 'json') {
     return pino({
       level: cfg.level,
     });
@@ -15,14 +15,14 @@ export function createLogger(cfg: Config['logging']): FastifyBaseLogger {
     timestamp: () => `,"time":"${formatTimestamp()}"`,
     base: undefined,
     transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: false,
-            translateTime: false,
-            ignore: 'pid,hostname',
-            levelFirst: true,
-          },
-        },
+      target: 'pino-pretty',
+      options: {
+        colorize: false,
+        translateTime: false,
+        ignore: 'pid,hostname',
+        levelFirst: true,
+      },
+    },
   }));
 }
 
@@ -37,7 +37,9 @@ function getCallerLocation(skipFrames = 2): string {
   const targetLine = lines[skipFrames + 1] ?? '';
 
   const match = targetLine.match(/([^/\\]+\.[jt]s):(\d+)/);
-  if (!match) return 'unknown:0';
+  if (!match) {
+    return 'unknown:0';
+  }
   return `${match[1]}:${match[2]}`;   // plain string, e.g. "server.ts:394"
 }
 

@@ -1,53 +1,51 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { AccountService } from '../../src/services/account.service.js'
-import { InMemLedgerDB } from '../../src/db/memory.js'
+import {beforeEach, describe, expect, it} from 'vitest';
+import {AccountService} from '../../src/services/account.service';
+import {Account} from '../../src/models';
+import {InMemAccountsDB} from '../../src/db/memAccountsDB';
+import {AccountAlreadyExistsError, AccountNotFoundError} from '../../src/errors/errors';
 
-let store: InMemLedgerDB
-let service: AccountService
+let accountsDB: InMemAccountsDB;
+let accountService: AccountService;
 
 beforeEach(() => {
-  store = new InMemLedgerDB()
-  service = new AccountService(store)
-})
+  accountsDB = new InMemAccountsDB();
+  accountService = new AccountService(accountsDB);
+});
 
 describe('AccountService.create', () => {
   it('creates an account with defaults', async () => {
-    const acct = await service.create({ direction: 'debit' })
-    expect(acct.direction).toBe('debit')
-    expect(acct.balance).toBe(0)
-    expect(acct.id).toBeTruthy()
-  })
+    const acct = await accountService.create({direction: 'debit'} as Account);
+    expect(acct.direction).toBe('debit');
+    expect(acct.balance).toBe(0);
+    expect(acct.id).toBeTruthy();
+  });
 
   it('respects a provided id', async () => {
-    const id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
-    const acct = await service.create({ id, direction: 'credit' })
-    expect(acct.id).toBe(id)
-  })
+    const id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    const acct = await accountService.create({id, direction: 'credit'} as Account);
+    expect(acct.id).toBe(id);
+  });
 
   it('uses provided initial balance', async () => {
-    const acct = await service.create({ direction: 'debit', balance: 500 })
-    expect(acct.balance).toBe(500)
-  })
+    const acct = await accountService.create({direction: 'debit', balance: 500} as Account);
+    expect(acct.balance).toBe(500);
+  });
 
   it('throws 409 on duplicate id', async () => {
-    const id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
-    await service.create({ id, direction: 'debit' })
-    await expect(service.create({ id, direction: 'credit' })).rejects.toMatchObject({
-      statusCode: 409,
-    })
-  })
-})
+    const id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    await accountService.create({id, direction: 'debit'} as Account);
+    await expect(accountService.create({id, direction: 'credit'} as Account)).rejects.toBeInstanceOf(AccountAlreadyExistsError);
+  });
+});
 
 describe('AccountService.getById', () => {
   it('returns existing account', async () => {
-    const created = await service.create({ direction: 'credit', name: 'Savings' })
-    const fetched = await service.getById(created.id)
-    expect(fetched).toEqual(created)
-  })
+    const created = await accountService.create({direction: 'credit', name: 'Savings'} as Account);
+    const fetched = await accountService.getById(created.id);
+    expect(fetched).toEqual(created);
+  });
 
   it('throws 404 for unknown id', async () => {
-    await expect(service.getById('non-existent')).rejects.toMatchObject({
-      statusCode: 404,
-    })
-  })
-})
+    await expect(accountService.getById('non-existent')).rejects.toBeInstanceOf(AccountNotFoundError);
+  });
+});

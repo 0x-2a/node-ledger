@@ -1,14 +1,15 @@
-import { v4 as uuidv4 } from 'uuid'
-import type { LedgerDB } from '../db/interface.js'
-import type {
-  CreateTransactionRequest,
-  Direction,
-  Entry,
-  Transaction,
-} from '../models/index.js'
+import {v4 as uuidv4} from 'uuid';
+import type {AccountsDB, LedgerDB} from '../db/interface';
+import {CreateTransactionRequest, Direction, Entry, Transaction,} from '../models';
+import {AccountNotFoundError, ReqCancelledError, TxAlreadyExistsError} from '../errors/errors';
+import {CreateTransactionSchema} from '../models/schemas';
 
 export class TransactionService {
-  constructor(private readonly store: LedgerDB) {}
+  constructor(
+      private readonly accountsDB: AccountsDB,
+      private readonly ledgerDB: LedgerDB
+  ) {
+  }
 
   /**
    * Creates and applies a balanced transaction.
@@ -22,64 +23,64 @@ export class TransactionService {
    * dropped before we finish, the AbortSignal fires and we stop early.
    */
   async create(
-    req: CreateTransactionRequest,
-    signal?: AbortSignal,
+      tx: CreateTransactionRequest,
+      signal?: AbortSignal,
   ): Promise<Transaction> {
-    this._checkAbort(signal)
+    this._checkAbort(signal);
 
-    const txId = req.id ?? uuidv4()
+    CreateTransactionSchema.parse(tx);
 
-    const existing = await this.store.getTransaction(txId)
+    const txId = tx.id || uuidv4();
+
+    const existing = await this.ledgerDB.getTransaction(txId);
     if (existing) {
-      throw Object.assign(
-        new Error(`Transaction with id ${txId} already exists`),
-        { statusCode: 409 },
-      )
+      throw new TxAlreadyExistsError(txId);
     }
 
     // 1 & 2 — verify existence and collect directions (direction is immutable)
-    const directionMap = new Map<string, Direction>()
-    for (const e of req.entries) {
-      this._checkAbort(signal)
+    const directionMap = new Map<string, Direction>();
+    for (const e of tx.entries) {
+      this._checkAbort(signal);
+
       if (!directionMap.has(e.account_id)) {
-        const acct = await this.store.getAccount(e.account_id)
+        const acct = await this.accountsDB.getAccount(e.account_id);
         if (!acct) {
-          throw Object.assign(
-            new Error(`Account ${e.account_id} not found`),
-            { statusCode: 404 },
-          )
+          throw new AccountNotFoundError(e.account_id);
         }
-        directionMap.set(e.account_id, acct.direction)
+
+        directionMap.set(e.account_id, acct.direction);
       }
     }
 
-    this._checkAbort(signal)
+    this._checkAbort(signal);
 
     // 3 — build entry objects
-    const entries: Entry[] = req.entries.map((e) => ({
+    const entries: Entry[] = tx.entries.map((e): Entry => ({
       id: e.id ?? uuidv4(),
       account_id: e.account_id,
       direction: e.direction,
       amount: e.amount,
-    }))
+    }));
 
     // 4 — apply each entry atomically (per-account mutex inside the store)
     for (const entry of entries) {
-      this._checkAbort(signal)
-      const accountDirection = directionMap.get(entry.account_id)!
-      await this.store.updateAccountBalance(entry.account_id, (balance) =>
-        this._applyEntry(balance, accountDirection, entry.direction, entry.amount),
-      )
+      this._checkAbort(signal);
+      const accountDirection = directionMap.get(entry.account_id)!;
+      await this.accountsDB.updateAccountBalance(entry.account_id, (balance) =>
+          this._applyEntry(balance, accountDirection, entry.direction, entry.amount),
+      );
     }
 
     // 5 — persist transaction
     const transaction: Transaction = {
       id: txId,
-      name: req.name,
+      name: tx.name,
       entries,
-    }
-    await this.store.saveTransaction(transaction)
-    return transaction
+    };
+
+    await this.ledgerDB.saveTransaction(transaction);
+
+    return transaction;
   }
 
   /**
@@ -88,22 +89,27 @@ export class TransactionService {
    *   diff direction  → balance -= amount
    */
   _applyEntry(
-    balance: number,
-    accountDirection: Direction,
-    entryDirection: Direction,
-    amount: number,
+      balance: number,
+      accountDirection: Direction,
+      entryDirection: Direction,
+      amount: number,
   ): number {
-    return accountDirection === entryDirection
-      ? balance + amount
-      : balance - amount
+    const isSameDirection = accountDirection === entryDirection;
+
+    if (isSameDirection) {
+      return balance + amount;
+    }
+
+    return balance - amount;
   }
 
   private _checkAbort(signal?: AbortSignal): void {
-    if (signal?.aborted) {
-      throw Object.assign(new Error('Request was cancelled'), {
-        statusCode: 499,
-        code: 'REQUEST_ABORTED',
-      })
+    if (!signal) {
+      return;
+    }
+
+    if (signal.aborted) {
+      throw new ReqCancelledError();
     }
   }
 }

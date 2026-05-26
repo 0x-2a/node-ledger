@@ -1,5 +1,5 @@
 import {loadConfig} from './config';
-import {buildApp} from './app.js';
+import {buildApp} from './app';
 import {FastifyListenOptions} from 'fastify/types/instance';
 
 async function start() {

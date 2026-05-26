@@ -1,35 +1,38 @@
 import Fastify, {FastifyInstance, FastifyServerFactory} from 'fastify';
 import cors from '@fastify/cors';
 import type {Config} from './config';
-import {createLogger} from './config/logger.js';
-import {InMemLedgerDB} from './db/memory.js';
-import type {LedgerDB} from './db/interface.js';
-import {registerErrorHandler} from './middleware/errorHandler.js';
-import {registerAccountRoutes} from './routes/accounts.js';
-import {registerTransactionRoutes} from './routes/transactions.js';
-import {AccountService} from './services/account.service.js';
-import {TransactionService} from './services/transaction.service.js';
+import {createLogger} from './config/logger';
+import type {AccountsDB, LedgerDB} from './db/interface';
+import {registerErrorHandler} from './middleware/errorHandler';
+import {AccountService} from './services/account.service';
+import {TransactionService} from './services/transaction.service';
 import http from 'node:http';
 import {FastifyServerFactoryHandler} from 'fastify/types/server-factory';
 import https from 'node:https';
 import fs from 'node:fs';
+import {registerAccountRoutes} from './routes/accountRoutes';
+import {registerTransactionRoutes} from './routes/txRoutes';
+import {InMemLedgerDB} from './db/memLedgerDB';
+import {InMemAccountsDB} from './db/memAccountsDB';
 
 export interface AppOptions {
   config: Config;
-  ledgerRepo?: LedgerDB;
+  accountsDB?: AccountsDB;
+  ledgerDB?: LedgerDB;
 }
 
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const {config} = options;
 
   let level = config.logging.level;
-  if (!level){
-    config.logging.level = 'info'
+  if (!level) {
+    config.logging.level = 'info';
   }
 
-  const logger= createLogger(config.logging);
+  const logger = createLogger(config.logging);
 
-  const ledgerRepo = options.ledgerRepo || new InMemLedgerDB();
+  const accountsDB = options.accountsDB || new InMemAccountsDB();
+  const ledgerDB = options.ledgerDB || new InMemLedgerDB();
 
   let serverFactory: FastifyServerFactory;
   if (config.server.protocol === 'https') {
@@ -88,8 +91,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   logger.info(`Server listening on ${config.server.host}:${config.server.port} . . .`);
 
   // ── Services ──────────────────────────────────────────────────────────────
-  const accountService = new AccountService(ledgerRepo);
-  const transactionService = new TransactionService(ledgerRepo);
+  const accountService = new AccountService(accountsDB);
+  const transactionService = new TransactionService(accountsDB, ledgerDB);
 
   // ── Routes ────────────────────────────────────────────────────────────────
   registerAccountRoutes(app, accountService);
@@ -98,14 +101,5 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   // ── Error handler ─────────────────────────────────────────────────────────
   registerErrorHandler(app);
 
-
-
   return app;
 }
-
-//
-// declare module 'fastify' {
-//   interface FastifyRequest {
-//     signal: AbortSignal;
-//   }
-// }

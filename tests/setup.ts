@@ -1,6 +1,6 @@
-import { resetConfig } from '../src/config/index.js'
-import { beforeEach } from 'vitest'
+import {resetConfig} from '../src/config';
+import {beforeEach} from 'vitest';
 
 beforeEach(() => {
-  resetConfig()
-})
+  resetConfig();
+});

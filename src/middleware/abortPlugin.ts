@@ -9,16 +9,16 @@ import fp from 'fastify-plugin';
  */
 async function abortPlugin(app: FastifyInstance) {
   app.addHook('onRequest', async (request) => {
-    const controller = new AbortController()
-    ;(request as { signal: AbortSignal }).signal = controller.signal
+    const controller = new AbortController();
+    (request as {signal: AbortSignal}).signal = controller.signal;
 
     // Fire when the underlying socket closes before a response is sent
     request.raw.on('close', () => {
       if (!request.raw.complete) {
-        controller.abort()
+        controller.abort();
       }
-    })
-  })
+    });
+  });
 }
 
-export default fp(abortPlugin, { name: 'abort-plugin' })
+export default fp(abortPlugin, {name: 'abort-plugin'});

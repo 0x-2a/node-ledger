@@ -1,42 +1,53 @@
-import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { ZodError } from 'zod'
-
-interface AppError extends Error {
-  statusCode?: number
-  code?: string
-}
+import type {FastifyError, FastifyInstance, FastifyReply, FastifyRequest} from 'fastify';
+import {ZodError} from 'zod';
+import {TypedErr, ErrorNameKey, ErrorNameStatusCodeMap, ErrorTypeMap} from '../errors/errors';
 
 export function registerErrorHandler(app: FastifyInstance): void {
-  app.setErrorHandler(
-    (error: FastifyError | AppError | ZodError, _req: FastifyRequest, reply: FastifyReply) => {
-      // Zod validation errors → 400
-      if (error instanceof ZodError) {
-        return reply.status(400).send({
-          error: 'Validation Error',
-          details: error.errors.map((e) => ({
-            path: e.path.join('.'),
-            message: e.message,
-          })),
-        })
-      }
+  app.setErrorHandler((
+          error: FastifyError | TypedErr | ZodError,
+          req: FastifyRequest,
+          reply: FastifyReply
+      ) => {
+        // Handle Zod validation errors → 400.
+        if (error instanceof ZodError) {
+          return reply.status(400).send({
+            error: 'Validation Error',
+            details: error.errors.map((e) => ({
+              path: e.path.join('.'),
+              message: e.message,
+            })),
+          });
+        }
 
-      const appErr = error as AppError
-      const statusCode = appErr.statusCode ?? (error as FastifyError).statusCode ?? 500
+        // Handle typed application errors.
+        if (error instanceof TypedErr) {
+          const errTypeKey = error.typeKey || ErrorTypeMap.Unknown;
+          const message = error.message || 'Unknown error';
+          const errStatus = ErrorNameStatusCodeMap[errTypeKey as ErrorNameKey];
 
-      // Cancelled requests
-      if (appErr.code === 'REQUEST_ABORTED') {
-        return reply.status(499).send({ error: 'Client Closed Request' })
-      }
+          if (errTypeKey === ErrorTypeMap.Unknown) {
+            req.log.error({err: error}, 'Unhandled error');
+          }
 
-      app.log.error({ err: error }, error.message)
+          return reply.status(errStatus).send({
+            code: errTypeKey,
+            message: message,
+          });
+        }
 
-      return reply.status(statusCode).send({
-        error: error.message ?? 'Internal Server Error',
-      })
-    },
-  )
+        // Handle fastify or remaining unhandled errors.
+        const fastifyError = error as FastifyError;
+        const statusCode = fastifyError.statusCode || 500;
+
+        req.log.error({err: error}, error.message || 'Unhandled error');
+
+        return reply.status(statusCode).send({
+          error: error.message ?? 'Internal Server Error',
+        });
+      },
+  );
 
   app.setNotFoundHandler((_req: FastifyRequest, reply: FastifyReply) => {
-    reply.status(404).send({ error: 'Not Found' })
-  })
+    reply.status(404).send({error: 'Not Found'});
+  });
 }

@@ -1,39 +1,40 @@
 import {v4 as uuidv4} from 'uuid';
-import type {LedgerDB} from '../db/interface.js';
-import type {Account, CreateAccountRequest} from '../models';
+import {Account, CreateAccountRequest} from '../models';
+import {AccountAlreadyExistsError, AccountNotFoundError, InvalidInputError} from '../errors/errors';
+import {CreateAccountSchema} from '../models/schemas';
+import {AccountsDB} from '../db/interface';
 
 export class AccountService {
-  constructor(private readonly store: LedgerDB) {
+  constructor(private readonly accountsDB: AccountsDB) {
   }
 
-  async create(req: CreateAccountRequest): Promise<Account> {
-    const id = req.id ?? uuidv4();
-
-    const existing = await this.store.getAccount(id);
-    if (existing) {
-      throw Object.assign(new Error(`Account with id ${id} already exists`), {
-        statusCode: 409,
-      });
+  async create(accountReq: CreateAccountRequest): Promise<Account> {
+    if (accountReq.id) {
+      const existing = await this.accountsDB.getAccount(accountReq.id);
+      if (existing) {
+        throw new AccountAlreadyExistsError(accountReq.id);
+      }
+    } else {
+      accountReq.id = uuidv4();
     }
 
-    const account: Account = {
-      id,
-      name: req.name,
-      balance: req.balance ?? 0,
-      direction: req.direction,
-    };
+    const account = CreateAccountSchema.parse(accountReq) as Account;
 
-    await this.store.saveAccount(account);
+    await this.accountsDB.saveAccount(account);
+
     return account;
   }
 
   async getById(id: string): Promise<Account> {
-    const account = await this.store.getAccount(id);
-    if (!account) {
-      throw Object.assign(new Error(`Account ${id} not found`), {
-        statusCode: 404,
-      });
+    if (!id) {
+      throw new InvalidInputError('id');
     }
+
+    const account = await this.accountsDB.getAccount(id);
+    if (!account) {
+      throw new AccountNotFoundError(id);
+    }
+
     return account;
   }
 }

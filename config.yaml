@@ -20,7 +20,7 @@ server:
 logging:
   # "json" for structured production logs, "console" for human-readable dev logs
   format: console
-  level: info
+  level: debug
 
 cors:
   origin: "*"
