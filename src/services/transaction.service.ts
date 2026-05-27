@@ -1,8 +1,8 @@
 import {v4 as uuidv4} from 'uuid';
 import type {AccountsDB, LedgerDB} from '../db/interface';
-import {CreateTransactionRequest, Direction, Entry, Transaction,} from '../models';
+import {TransactionReq, Direction, Entry, Transaction, EntryReq,} from '../models';
 import {AccountNotFoundError, ReqCancelledError, TxAlreadyExistsError} from '../errors/errors';
-import {CreateTransactionSchema} from '../models/schemas';
+import {TransactionReqSchema} from '../models/schemas';
 
 export class TransactionService {
   constructor(
@@ -23,49 +23,54 @@ export class TransactionService {
    * dropped before we finish, the AbortSignal fires and we stop early.
    */
   async create(
-      tx: CreateTransactionRequest,
+      tx: TransactionReq,
       signal?: AbortSignal,
   ): Promise<Transaction> {
     this._checkAbort(signal);
 
-    CreateTransactionSchema.parse(tx);
+    // Validate tx and credit/debit balancing to zero.
+    TransactionReqSchema.parse(tx);
 
     const txId = tx.id || uuidv4();
 
-    const existing = await this.ledgerDB.getTransaction(txId);
-    if (existing) {
+    const existingTx = await this.ledgerDB.getTransaction(txId);
+    if (existingTx) {
       throw new TxAlreadyExistsError(txId);
     }
 
     // 1 & 2 — verify existence and collect directions (direction is immutable)
-    const directionMap = new Map<string, Direction>();
+    const accountDirectionMap = new Map<string, Direction>();
     for (const e of tx.entries) {
       this._checkAbort(signal);
 
-      if (!directionMap.has(e.account_id)) {
+      if (!accountDirectionMap.has(e.account_id)) {
         const acct = await this.accountsDB.getAccount(e.account_id);
         if (!acct) {
           throw new AccountNotFoundError(e.account_id);
         }
 
-        directionMap.set(e.account_id, acct.direction);
+        accountDirectionMap.set(e.account_id, acct.direction);
       }
     }
 
     this._checkAbort(signal);
 
     // 3 — build entry objects
-    const entries: Entry[] = tx.entries.map((e): Entry => ({
+    const entries: Entry[] = tx.entries.map((e: EntryReq): Entry => ({
       id: e.id ?? uuidv4(),
       account_id: e.account_id,
       direction: e.direction,
       amount: e.amount,
     }));
 
+    // NOTE
+    //  With a real db we would need to begin a transaction here
+    //   and apply updates to accounts (with commit/rollback returned).
+    //  Then after ledgerDB.saveTransaction commit or rollback on fail.
+
     // 4 — apply each entry atomically (per-account mutex inside the store)
     for (const entry of entries) {
-      this._checkAbort(signal);
-      const accountDirection = directionMap.get(entry.account_id)!;
+      const accountDirection = accountDirectionMap.get(entry.account_id)!;
       await this.accountsDB.updateAccountBalance(entry.account_id, (balance) =>
           this._applyEntry(balance, accountDirection, entry.direction, entry.amount),
       );
@@ -78,6 +83,8 @@ export class TransactionService {
       entries,
     };
 
+    // NOTE
+    //   In an RDBMS we would split this out into a transaction table save and entries table.
     await this.ledgerDB.saveTransaction(transaction);
 
     return transaction;

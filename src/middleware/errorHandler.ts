@@ -42,7 +42,9 @@ export function registerErrorHandler(app: FastifyInstance): void {
         const fastifyError = error as FastifyError;
         const statusCode = fastifyError.statusCode || 500;
 
-        logger.error({err: error}, error.message || 'Unhandled error');
+        if(statusCode === 500) {
+          logger.error({err: error}, error.message || 'Unhandled error');
+        }
 
         return reply.status(statusCode).send({
           error: error.message ?? 'Internal Server Error',

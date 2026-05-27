@@ -7,8 +7,22 @@ export interface Account {
   direction: Direction;
 }
 
+export interface AccountReq {
+  id?: string;
+  name?: string;
+  balance: number;
+  direction: Direction;
+}
+
 export interface Entry {
   id: string;
+  account_id: string;
+  direction: Direction;
+  amount: number;
+}
+
+export interface EntryReq {
+  id?: string;
   account_id: string;
   direction: Direction;
   amount: number;
@@ -20,22 +34,8 @@ export interface Transaction {
   entries: Entry[];
 }
 
-// ─── Request / Response shapes ───────────────────────────────────────────────
-
-export interface CreateAccountRequest {
+export interface TransactionReq {
   id?: string;
   name?: string;
-  balance: number;
-  direction: Direction;
-}
-
-export interface CreateTransactionRequest {
-  id?: string;
-  name?: string;
-  entries: Array<{
-    id?: string
-    account_id: string
-    direction: Direction
-    amount: number
-  }>;
+  entries: EntryReq[];
 }

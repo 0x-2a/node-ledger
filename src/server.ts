@@ -3,6 +3,7 @@ import {buildApp} from './app';
 import {FastifyListenOptions} from 'fastify/types/instance';
 import {getLogger, initLogger} from './config/logger';
 
+// See src/config/index.ts for definitions
 const configPath = process.env.ENV || 'config.yaml';
 const config = loadConfig(configPath);
 

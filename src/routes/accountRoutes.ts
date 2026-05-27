@@ -1,7 +1,7 @@
 import type {FastifyInstance, FastifyReply, FastifyRequest} from 'fastify';
 import type {AccountService} from '../services/account.service';
-import {CreateAccountSchema} from '../models/schemas';
-import type {CreateAccountRequest} from '../models';
+import {AccountReqSchema} from '../models/schemas';
+import type {AccountReq} from '../models';
 
 export function registerAccountRoutes(
     app: FastifyInstance,
@@ -10,10 +10,10 @@ export function registerAccountRoutes(
   app.post('/accounts', async (
       request: FastifyRequest,
       reply: FastifyReply
-  ) => {
-    const body = CreateAccountSchema.parse(request.body);
+  ): Promise<never> => {
+    const body = AccountReqSchema.parse(request.body);
 
-    const accountReq: CreateAccountRequest = {
+    const accountReq: AccountReq = {
       id: body.id || '',
       name: body.name,
       balance: body.balance,
@@ -25,11 +25,10 @@ export function registerAccountRoutes(
     return reply.status(201).send(accountRes);
   });
 
-  /** GET /accounts/:id */
   app.get('/accounts/:id', async (
           request: FastifyRequest<{Params: {id: string}}>,
           reply: FastifyReply,
-      ) => {
+      ):Promise<never> => {
         const account = await accountService.getById(request.params.id);
 
         return reply.send(account);

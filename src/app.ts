@@ -14,6 +14,7 @@ import {registerTransactionRoutes} from './routes/txRoutes';
 import {InMemLedgerDB} from './db/memLedgerDB';
 import {InMemAccountsDB} from './db/memAccountsDB';
 import {registerRootRoutes} from './routes/rootRoutes';
+import {getLogger} from './config/logger';
 
 export interface AppOptions {
   config: Config;
@@ -23,6 +24,7 @@ export interface AppOptions {
 
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const {config} = options;
+  const logger = getLogger();
 
   const accountsDB = options.accountsDB || new InMemAccountsDB();
   const ledgerDB = options.ledgerDB || new InMemLedgerDB();
@@ -64,6 +66,15 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     origin: config.cors.origin,
     methods: config.cors.methods,
   });
+
+  // Log request-response times in debug
+  if(logger.levelVal <= logger.levels.values['debug']){
+    app.addHook('onResponse', async (request, reply) => {
+      logger.debug(
+          `${request.method} ${request.routeOptions.url} ${reply.statusCode} ${Math.round(reply.elapsedTime)}ms`
+      );
+    });
+  }
 
   // Handle request cancellation.
   app.addHook('onRequest', async (request) => {

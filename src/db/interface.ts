@@ -5,15 +5,16 @@ export interface AccountsDB {
 
   saveAccount(account: Account): Promise<void>;
 
-  /** Atomically read-modify-write an account balance. */
+  // Support atomic updates by deferring the balance change
+  //   to the db impl after it acquires a lock on current balance.
   updateAccountBalance(
       id: string,
-      updater: (current: number) => number,
+      modifyBalance: (priorBalance: number) => number,
   ): Promise<Account>;
 }
 
 export interface LedgerDB {
-  getTransaction(id: string): Promise<Transaction | undefined>;
+  getTransaction(id: string): Promise<Transaction | null>;
 
   saveTransaction(tx: Transaction): Promise<void>;
 }

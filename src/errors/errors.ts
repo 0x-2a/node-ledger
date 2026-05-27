@@ -1,3 +1,9 @@
+/**
+ * Canonical error type identifiers used across the service boundary.
+ *
+ * These values are stable string constants that can be serialized over HTTP
+ * and mapped to appropriate status codes and client error types.
+ */
 export const ErrorTypeMap = {
   AccountAlreadyExists: 'ACCOUNT_ALREADY_EXISTS',
   AccountNotFound: 'ACCOUNT_NOT_FOUND',
@@ -9,6 +15,12 @@ export const ErrorTypeMap = {
 
 export type ErrorNameKey = typeof ErrorTypeMap[keyof typeof ErrorTypeMap];
 
+/**
+ * Mapping from error type identifier to HTTP status code.
+ *
+ * Used by the error handler to translate domain-specific errors into
+ * consistent HTTP responses.
+ */
 export const ErrorNameStatusCodeMap: Record<ErrorNameKey, number> = {
   [ErrorTypeMap.AccountAlreadyExists]: 409,
   [ErrorTypeMap.TxAlreadyExists]: 409,
@@ -18,6 +30,12 @@ export const ErrorNameStatusCodeMap: Record<ErrorNameKey, number> = {
   [ErrorTypeMap.Unknown]: 500,
 };
 
+/**
+ * Base class for typed domain errors.
+ *
+ * All domain errors extend this class and expose a `typeKey` that can be
+ * mapped to an HTTP status code and a stable wire-level error identifier.
+ */
 export abstract class TypedErr extends Error {
   abstract readonly typeKey: string;
 

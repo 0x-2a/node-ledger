@@ -2,8 +2,8 @@ import type {FastifyInstance} from 'fastify';
 import fp from 'fastify-plugin';
 
 /**
- * Attaches an AbortController to every request so route handlers can honour
- * client disconnects (analogous to Go's ctx.Done() / context.WithCancel).
+ * Attaches an AbortController to every request so route handlers can honor
+ * client disconnects (analogous to context done/cancel in other languages).
  *
  * Access via `request.signal` in any route handler.
  */

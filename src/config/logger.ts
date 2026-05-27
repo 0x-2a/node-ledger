@@ -1,15 +1,16 @@
 import pino from 'pino';
 import type {Config} from './index';
-import {FastifyBaseLogger} from 'fastify';
 import moment from 'moment-timezone';
 
-let logger: FastifyBaseLogger | undefined;
+// Initialize as noop logger.
+let logger: pino.Logger = pino({ level: 'silent' });
 
 export function initLogger(cfg: Config['logging']) {
-  if (logger) {
+  if (cfg.level === logger.level) {
     return;
   }
 
+  // Simple cfg for fast JSON logging.
   if (cfg.format === 'json') {
     logger = pino({
       level: cfg.level,
@@ -18,6 +19,9 @@ export function initLogger(cfg: Config['logging']) {
     return;
   }
 
+  // Detailed cfg for detailed dev logging.
+  //
+  // NOTE: For Dev or Debug only; the call tracing will add overhead.
   logger = withLocation(pino({
     level: cfg.level,
     timestamp: () => `,"time":"${formatTimestamp()}"`,
@@ -34,7 +38,7 @@ export function initLogger(cfg: Config['logging']) {
   }));
 }
 
-export function getLogger(): FastifyBaseLogger {
+export function getLogger(): pino.Logger {
   if (!logger) {
     throw new Error('Logger not initialized. Call initLogger() first.');
   }
@@ -46,7 +50,37 @@ function formatTimestamp(): string {
   return moment().tz(moment.tz.guess()).format('YYYY-MM-DD hh:mm:ssA z');
 }
 
-/** Extract "filename:linenumber" from a fresh Error stack, skipping N internal frames. */
+// For console logging, wraps the pino logger so every call automatically includes caller location.
+function withLocation(logger: pino.Logger): pino.Logger {
+  const wrap =
+      (level: pino.Level) =>
+          (...args: Parameters<pino.LogFn>) => {
+            const loc = getCallerLocation(2);
+
+            if (typeof args[0] === 'object' && args[0] !== null) {
+              // Default pino passthrough for structured logging, e.g. logger.info({ req, res, userId }).
+              const [mergeObj, ...rest] = args as [object, ...unknown[]];
+              (logger[level] as pino.LogFn).call(logger, mergeObj, ...rest as [string, ...unknown[]]);
+            } else {
+              // Inject file:line into the log message.
+              const [msg, ...rest] = args as [string, ...unknown[]];
+              const locMsg = `${loc}   ${msg}`;
+              (logger[level] as pino.LogFn).call(logger, locMsg, ...rest as [string, ...unknown[]]);
+            }
+          };
+
+  // Inherit the full prototype (gives `child`, `level`, `bindings`, etc.)
+  const proxy = Object.create(logger) as pino.Logger;
+
+  // Override only the log-level methods
+  for (const level of ['trace', 'debug', 'info', 'warn', 'error', 'fatal'] as pino.Level[]) {
+    proxy[level] = wrap(level) as pino.LogFn;
+  }
+
+  return proxy;
+}
+
+// For console logging, extracts "filename:line" using the Error stack.
 function getCallerLocation(skipFrames = 2): string {
   const err = new Error();
   const lines = err.stack?.split('\n') ?? [];
@@ -56,37 +90,5 @@ function getCallerLocation(skipFrames = 2): string {
   if (!match) {
     return 'unknown:0';
   }
-  return `${match[1]}:${match[2]}`;   // plain string, e.g. "server.ts:394"
+  return `${match[1]}:${match[2]}`;   // plain string, e.g. "server.ts:123"
 }
-
-/** Wraps a pino logger so every call automatically includes caller location. */
-function withLocation(logger: pino.Logger): FastifyBaseLogger {
-  const wrap =
-      (level: pino.Level) =>
-          (...args: Parameters<pino.LogFn>) => {
-            const loc = getCallerLocation(2);
-            if (typeof args[0] === 'object' && args[0] !== null) {
-              const [mergeObj, ...rest] = args as [object, ...unknown[]];
-              (logger[level] as pino.LogFn).call(logger, mergeObj, ...rest as [string, ...unknown[]]);
-            } else {
-              const [msg, ...rest] = args as [string, ...unknown[]];
-              const locMsg = `${loc}   ${msg}`;
-              (logger[level] as pino.LogFn).call(logger, locMsg, ...rest as [string, ...unknown[]]);
-            }
-          };
-
-  // Inherit the full prototype (gives Fastify `child`, `level`, `bindings`, etc.)
-  const proxy = Object.create(logger) as FastifyBaseLogger;
-
-  // Override only the log-level methods
-  for (const level of ['trace', 'debug', 'info', 'warn', 'error', 'fatal'] as pino.Level[]) {
-    proxy[level] = wrap(level) as pino.LogFn;
-  }
-
-  // Proxy `child` so child loggers are also location-aware
-  proxy.child = (bindings: pino.Bindings, options?: pino.ChildLoggerOptions) =>
-      withLocation(logger.child(bindings, options));
-
-  return proxy;
-}
-

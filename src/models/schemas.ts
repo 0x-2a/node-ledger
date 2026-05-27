@@ -2,14 +2,14 @@ import {z} from 'zod';
 
 export const DirectionSchema = z.enum(['debit', 'credit']);
 
-export const CreateAccountSchema = z.object({
+export const AccountReqSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().max(255).optional(),
   balance: z.number().finite().default(0),
   direction: DirectionSchema,
 });
 
-export const EntryInputSchema = z.object({
+export const EntryReqSchema = z.object({
   id: z.string().uuid().optional(),
   account_id: z.string().uuid(),
   direction: DirectionSchema,
@@ -19,12 +19,12 @@ export const EntryInputSchema = z.object({
   .finite(),
 });
 
-export const CreateTransactionSchema = z
+export const TransactionReqSchema = z
 .object({
   id: z.string().uuid().optional(),
   name: z.string().max(255).optional(),
   entries: z
-  .array(EntryInputSchema)
+  .array(EntryReqSchema)
   .min(2, {message: 'A transaction must have at least 2 entries'}),
 })
 .refine(
