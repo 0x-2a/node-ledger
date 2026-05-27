@@ -1,5 +1,5 @@
 import type {FastifyInstance, FastifyReply, FastifyRequest} from 'fastify';
-import type {AccountService} from '../services/account.service';
+import type {AccountService} from '../services/accountService';
 import {AccountReqSchema} from '../models/schemas';
 import type {AccountReq} from '../models';
 
@@ -28,7 +28,7 @@ export function registerAccountRoutes(
   app.get('/accounts/:id', async (
           request: FastifyRequest<{Params: {id: string}}>,
           reply: FastifyReply,
-      ):Promise<never> => {
+      ): Promise<never> => {
         const account = await accountService.getById(request.params.id);
 
         return reply.send(account);

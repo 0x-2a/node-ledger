@@ -1,5 +1,5 @@
 import type {FastifyInstance, FastifyReply, FastifyRequest} from 'fastify';
-import type {TransactionService} from '../services/transaction.service';
+import type {TransactionService} from '../services/transactionService';
 import {TransactionReqSchema} from '../models/schemas';
 import {Transaction} from '../models';
 

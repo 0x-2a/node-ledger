@@ -43,7 +43,7 @@ export class InMemLedgerDB implements LedgerDB {
   private _copyTx(tx: Transaction): Transaction {
     return {
       ...tx,
-      entries: tx.entries.map(entry => ({ ...entry })),
+      entries: tx.entries.map(entry => ({...entry})),
     };
   }
 }

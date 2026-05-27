@@ -1,6 +1,6 @@
 import {v4 as uuidv4} from 'uuid';
 import type {AccountsDB, LedgerDB} from '../db/interface';
-import {TransactionReq, Direction, Entry, Transaction, EntryReq,} from '../models';
+import {Direction, Entry, EntryReq, Transaction, TransactionReq,} from '../models';
 import {AccountNotFoundError, ReqCancelledError, TxAlreadyExistsError} from '../errors/errors';
 import {TransactionReqSchema} from '../models/schemas';
 

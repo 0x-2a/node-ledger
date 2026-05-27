@@ -42,7 +42,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
         const fastifyError = error as FastifyError;
         const statusCode = fastifyError.statusCode || 500;
 
-        if(statusCode === 500) {
+        if (statusCode === 500) {
           logger.error({err: error}, error.message || 'Unhandled error');
         }
 

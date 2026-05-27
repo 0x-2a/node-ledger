@@ -37,19 +37,25 @@ ledger/
 │   ├── config/
 │   │   ├── index.ts             # YAML config loader + Zod schema
 │   │   └── logger.ts            # Pino logger factory (json | console)
+│   ├── errors/
+│   │   └── errors.ts            # Shared app level typed errors
 │   ├── models/
 │   │   ├── index.ts             # Domain types: Account, Transaction, Entry
 │   │   └── schemas.ts           # Zod request validation schemas
 │   ├── db/
 │   │   ├── interface.ts         # LedgerStore interface (swap DB here)
-│   │   └── memory.ts            # In-memory implementation w/ per-account mutex
+│   │   ├── memAccountsDB.ts     # Account mem DB impl
+│   │   ├── memLedgerDB.ts       # Ledger mem DB impl
+│   │   └── memMutex.ts          # Concurrent mutex for account updates
 │   ├── services/
-│   │   ├── account.service.ts   # Account business logic
-│   │   └── transaction.service.ts # Transaction + double-entry logic
+│   │   ├── accountService.ts    # Account business logic
+│   │   └── transactionService.ts # Transaction + double-entry logic
 │   ├── routes/
-│   │   ├── accounts.ts          # POST /accounts, GET /accounts/:id
-│   │   └── transactions.ts      # POST /transactions
+│   │   ├── accountRoutes.ts     # POST /accounts, GET /accounts/:id
+│   │   ├── rootRoutes.ts        # GET /
+│   │   └── txRoutes.ts          # POST /transactions
 │   └── middleware/
+│       └── abortPlugin.ts       # Handle request cancellation
 │       └── errorHandler.ts      # Centralised error + 404 handler
 └── tests/
     ├── setup.ts                 # Global test setup
@@ -72,6 +78,22 @@ ledger/
 ---
 
 ## Setup & Running
+
+### Docker
+
+```bash
+# Run the server
+docker build -t ledger:app .
+docker run --rm --name ledger -p 3000:3000 ledger:app
+```
+
+```bash
+# Run tests
+docker build --target test -t ledger:test .
+docker run --rm --name ledger-test ledger:test
+```
+
+### CLI
 
 ```bash
 # 1. Install dependencies
@@ -133,7 +155,7 @@ openssl req -x509 -newkey rsa:4096 -keyout certs/server.key -out certs/server.cr
 # Enable HTTPS in config.yaml
 sed -i 's/protocol: http/protocol: https/' config.yaml
 
-pnpm dev
+ENV=config-https.yaml pnpm dev
 ```
 
 curl with a self-signed cert:
@@ -229,19 +251,32 @@ curl -X POST http://localhost:3000/transactions \
 
 ## Architecture Notes
 
-### Swapping the Database
+### Database
 
-All persistence goes through `LedgerStore` (`src/db/interface.ts`).
+All persistence goes through `src/db/interface.ts`.
 To use Postgres, Redis, etc.:
 
-1. Create `src/db/postgres.ts` implementing `LedgerStore`.
-2. Inject it in `src/app.ts` instead of `InMemoryStore`.
+1. Create `src/db/postgres.ts` implementing `src/db/interface.ts`.
+2. Inject it in `src/app.ts`.
 
-No service or route code changes needed.
+Important note: I began writing database transaction/commit/rollback support in order to 
+create a clean swappable db interface, but I decided it was a bit out of scope given the
+interview context of persisting in memory. In the current design the interface assumes
+that persistence to both the ledger store and account store will succeed (which is not
+a realistic production scenario).
+
+A much better design would be to separate out transactions, entries, and accounts into their own
+tables in an ACID-complete db with rollback support to handle failures.
+
+### Errors
+
+Errors should be treated as first-class citizens in a fault-tolerant system, and for this project
+I added typed errors in `errors.ts`. Each error is mapped to an HTTP status code as well as
+pre-defined interpolated message.
 
 ### Concurrency
 
-Each account has its own `Mutex` inside `InMemoryStore`.
+Each account has its own `Mutex` inside `InMemAccountsDB`.
 `updateAccountBalance` serialises all writes to the same account,
 preventing lost-update anomalies under concurrent requests.
 
@@ -252,10 +287,11 @@ If the client disconnects, the signal fires and `TransactionService`
 stops processing mid-flight (analogous to Go's `context.WithCancel`).
 The handler returns **499 Client Closed Request**.
 
-### Logging Format
+### Logging Format Example (for dev logs)
+
+I configured pino logger to give clean traceable dev-style logs for debugging. It is also
+configurable for a fast production-style json logger via the `json` flag in the config.yaml.
 
 ```
 INFO   [2026-05-21 08:53:56AM EDT] accounts.ts:14   Account created
 ```
-
-Switch to JSON for production (`logging.format: json` in `config.yaml`).

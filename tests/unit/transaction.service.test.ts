@@ -1,6 +1,6 @@
 import {beforeEach, describe, expect, it} from 'vitest';
-import {TransactionService} from '../../src/services/transaction.service.js';
-import {AccountService} from '../../src/services/account.service.js';
+import {TransactionService} from '../../src/services/transactionService.js';
+import {AccountService} from '../../src/services/accountService.js';
 import {Account} from '../../src/models';
 import {InMemAccountsDB} from '../../src/db/memAccountsDB';
 import {InMemLedgerDB} from '../../src/db/memLedgerDB';

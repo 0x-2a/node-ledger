@@ -3,8 +3,8 @@ import cors from '@fastify/cors';
 import type {Config} from './config';
 import type {AccountsDB, LedgerDB} from './db/interface';
 import {registerErrorHandler} from './middleware/errorHandler';
-import {AccountService} from './services/account.service';
-import {TransactionService} from './services/transaction.service';
+import {AccountService} from './services/accountService';
+import {TransactionService} from './services/transactionService';
 import http from 'node:http';
 import {FastifyServerFactoryHandler} from 'fastify/types/server-factory';
 import https from 'node:https';
@@ -68,7 +68,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
 
   // Log request-response times in debug
-  if(logger.levelVal <= logger.levels.values['debug']){
+  if (logger.levelVal <= logger.levels.values['debug']) {
     app.addHook('onResponse', async (request, reply) => {
       logger.debug(
           `${request.method} ${request.routeOptions.url} ${reply.statusCode} ${Math.round(reply.elapsedTime)}ms`

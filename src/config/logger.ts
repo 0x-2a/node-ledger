@@ -3,7 +3,7 @@ import type {Config} from './index';
 import moment from 'moment-timezone';
 
 // Initialize as noop logger.
-let logger: pino.Logger = pino({ level: 'silent' });
+let logger: pino.Logger = pino({level: 'silent'});
 
 export function initLogger(cfg: Config['logging']) {
   if (cfg.level === logger.level) {

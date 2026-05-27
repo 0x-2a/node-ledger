@@ -1,5 +1,5 @@
 import {beforeEach, describe, expect, it} from 'vitest';
-import {AccountService} from '../../src/services/account.service';
+import {AccountService} from '../../src/services/accountService';
 import {Account} from '../../src/models';
 import {InMemAccountsDB} from '../../src/db/memAccountsDB';
 import {AccountAlreadyExistsError, AccountNotFoundError} from '../../src/errors/errors';

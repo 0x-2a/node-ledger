@@ -4,7 +4,6 @@ import {AccountNotFoundError, InvalidInputError} from '../errors/errors';
 import {AccountsDB} from './interface';
 import {Mutex} from './memMutex';
 
-
 export class InMemAccountsDB implements AccountsDB {
   private readonly accounts = new Map<string, Account>();
   private readonly locks = new Map<string, Mutex>();
